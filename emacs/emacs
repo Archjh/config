@@ -1,0 +1,15 @@
+;; -*- lexical-binding: t -*-
+;; Gnus 配置 for Outlook Office365 with OAuth2
+
+;; 1. 包管理初始化
+(require 'package)
+(setq package-archives '(("gnu"   . "https://mirrors.ustc.edu.cn/elpa/gnu/")
+                         ("melpa" . "https://mirrors.ustc.edu.cn/elpa/melpa/")
+                         ("nongnu" . "https://mirrors.ustc.edu.cn/elpa/nongnu/")))
+
+;; 先禁用其他可能冲突的主题
+(mapc #'disable-theme custom-enabled-themes)
+;; 加载 deeper-blue 主题
+(load-theme 'deeper-blue t)
+
+(global-display-line-numbers-mode 1)
