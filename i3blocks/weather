@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+# 获取天气信息（使用wttr.in服务）
+LOCATION="Xian"  # 更改为您的城市
+WEATHER=$(curl -s "wttr.in/$LOCATION?format=%c+%t+%w" | sed 's/+//g')
+
+# 显示天气信息
+echo "$WEATHER"

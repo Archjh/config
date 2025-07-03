@@ -1,0 +1,59 @@
+# 全局设置
+command=/usr/lib/i3blocks/$BLOCK_NAME
+separator_block_width=15  # 增加分隔宽度使方框更明显
+markup=pango
+color=#FFD700  # 全局文字颜色（黄色）
+border=#FFD700 # 边框颜色（黄色）
+border_top=2    # 方框上边框
+border_bottom=2 # 方框下边框
+border_left=2   # 方框左边框
+border_right=2  # 方框右边框
+
+[cpu_usage]
+command=~/.config/i3blocks/cpu
+interval=2
+label=⚙ 
+border=#FFD700
+border_top=2
+border_bottom=2
+border_left=2
+border_right=2
+
+[network]
+command=~/.config/i3blocks/network
+interval=5
+border=#FFD700
+border_top=2
+border_bottom=2
+border_left=2
+border_right=2
+
+[weather]
+command=~/.config/i3blocks/weather
+interval=1800  # 每30分钟更新一次
+label=⛅ 
+border=#FFD700
+border_top=2
+border_bottom=2
+border_left=2
+border_right=2
+
+[time]
+command=date '+%H:%M %d-%m-%Y'
+interval=1
+label=🕒 
+border=#FFD700
+border_top=2
+border_bottom=2
+border_left=2
+border_right=2
+
+[disk_usage]
+command=~/.config/i3blocks/disk-io
+interval=30
+label=📁 
+border=#FFD700
+border_top=2
+border_bottom=2
+border_left=2
+border_right=2

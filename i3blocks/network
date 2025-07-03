@@ -1,0 +1,4 @@
+#!/bin/bash
+iface=$(ip route | awk '/default/ {print $5}')
+ip=$(ip addr show $iface | grep "inet " | awk '{print $2}')
+echo "🌐 ${ip%%/*}"

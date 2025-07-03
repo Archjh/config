@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+#
+# i3blocks磁盘I/O监控脚本
+# 显示当前磁盘读写速率（可选择MB/s或kB/s）
+
+# 配置选项
+LABEL="${LABEL:-""}"              # 显示标签
+INTERVAL="${INTERVAL:-5}"         # 更新间隔(秒)
+UNIT="${UNIT:-auto}"              # 单位: auto/kB/MB
+PRECISION="${PRECISION:-1}"       # 小数精度
+SEPARATOR="${SEPARATOR:-/}"       # 读写速率分隔符
+WARN_THRESHOLD="${WARN_THRESHOLD:-0}" # 警告阈值(MB/s)
+WARN_COLOR="${WARN_COLOR:-#FF0000}"   # 警告颜色
+
+# 帮助信息
+show_help() {
+    cat <<EOF
+Usage: $(basename "$0") [options]
+Options:
+  -L <label>     显示标签 (默认: "$LABEL")
+  -t <seconds>   更新间隔 (默认: $INTERVAL)
+  -u <unit>      单位: auto/kB/MB (默认: $UNIT)
+  -p <precision> 小数精度 (默认: $PRECISION)
+  -s <separator> 分隔符 (默认: "$SEPARATOR")
+  -T <threshold> 警告阈值(MB/s) (默认: $WARN_THRESHOLD)
+  -C <color>     警告颜色 (默认: "$WARN_COLOR")
+  -h             显示帮助信息
+EOF
+    exit 0
+}
+
+# 解析参数
+while getopts "L:t:u:p:s:T:C:h" opt; do
+    case "$opt" in
+        L) LABEL="$OPTARG" ;;
+        t) INTERVAL="$OPTARG" ;;
+        u) UNIT="$OPTARG" ;;
+        p) PRECISION="$OPTARG" ;;
+        s) SEPARATOR="$OPTARG" ;;
+        T) WARN_THRESHOLD="$OPTARG" ;;
+        C) WARN_COLOR="$OPTARG" ;;
+        h) show_help ;;
+        *) show_help ;;
+    esac
+done
+
+# 获取磁盘I/O数据
+get_disk_io() {
+    # 使用/proc/diskstats获取更可靠的数据
+    local stats=($(grep -w "$1" /proc/diskstats))
+    echo $((${stats[5]}*512)) $((${stats[9]}*512)) # 读取和写入的字节数
+}
+
+# 主函数
+main() {
+    # 获取所有磁盘设备
+    local devices=($(lsblk -dno NAME | grep -E '^[shvx]d[a-z]+|^nvme[0-9]+n[0-9]+'))
+    
+    if [ ${#devices[@]} -eq 0 ]; then
+        echo "No disks found"
+        exit 1
+    fi
+
+    # 初始读取
+    declare -A start_read start_write
+    for dev in "${devices[@]}"; do
+        read start_read["$dev"] start_write["$dev"] <<< $(get_disk_io "$dev")
+    done
+
+    sleep "$INTERVAL"
+
+    # 第二次读取
+    declare -A end_read end_write
+    for dev in "${devices[@]}"; do
+        read end_read["$dev"] end_write["$dev"] <<< $(get_disk_io "$dev")
+    done
+
+    # 计算总速率
+    local total_read=0 total_write=0
+    for dev in "${devices[@]}"; do
+        total_read=$((total_read + (end_read["$dev"] - start_read["$dev"])/INTERVAL))
+        total_write=$((total_write + (end_write["$dev"] - start_write["$dev"])/INTERVAL))
+    done
+
+    # 转换为选择的单位
+    local read_val write_val unit
+    case "$UNIT" in
+        kB)
+            read_val=$(bc <<< "scale=$PRECISION; $total_read/1024")
+            write_val=$(bc <<< "scale=$PRECISION; $total_write/1024")
+            unit="kB/s"
+            ;;
+        MB)
+            read_val=$(bc <<< "scale=$PRECISION; $total_read/1048576")
+            write_val=$(bc <<< "scale=$PRECISION; $total_write/1048576")
+            unit="MB/s"
+            ;;
+        *)
+            if [ $((total_read/1048576)) -gt 1 ] || [ $((total_write/1048576)) -gt 1 ]; then
+                read_val=$(bc <<< "scale=$PRECISION; $total_read/1048576")
+                write_val=$(bc <<< "scale=$PRECISION; $total_write/1048576")
+                unit="MB/s"
+            else
+                read_val=$(bc <<< "scale=$PRECISION; $total_read/1024")
+                write_val=$(bc <<< "scale=$PRECISION; $total_write/1024")
+                unit="kB/s"
+            fi
+            ;;
+    esac
+
+    # 检查是否需要警告
+    if [ "$WARN_THRESHOLD" -gt 0 ] && 
+       { [ $(bc <<< "$read_val >= $WARN_THRESHOLD") -eq 1 ] || 
+         [ $(bc <<< "$write_val >= $WARN_THRESHOLD") -eq 1 ]; }; then
+        printf "<span color='%s'>%s%.*f%s%.*f %s</span>\n" \
+               "$WARN_COLOR" "$LABEL" "$PRECISION" "$read_val" "$SEPARATOR" \
+               "$PRECISION" "$write_val" "$unit"
+    else
+        printf "%s%.*f%s%.*f %s\n" "$LABEL" "$PRECISION" "$read_val" \
+               "$SEPARATOR" "$PRECISION" "$write_val" "$unit"
+    fi
+}
+
+main
